@@ -1,0 +1,7 @@
+{
+  "watch": [
+    "src"
+  ],
+  "ext":"tsx",
+  "exec": "ts-node  ./src/wrComparer.tsx"
+}
