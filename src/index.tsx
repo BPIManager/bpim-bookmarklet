@@ -24,7 +24,7 @@ class Main {
     }
     console.log("v0.0.1");
     const dani = await this.getter.getKaidenList();
-    this.getter.setDiff(11); // 10:☆11、11:☆12
+    this.getter.setDiff(10); // 10:☆11、11:☆12
     const list = dani.list;
     let songsList:{[key:string]:number} = {};
     for(let i =0; i < list.length; ++i){
@@ -63,7 +63,7 @@ class Main {
 
 class Getter {
 
-  private diff:number = 11;
+  private diff:number = 10;
   private offset:number = 0;
   private rivalId:string = "";
 
