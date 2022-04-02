@@ -10,8 +10,8 @@ app.get("/", (req, res) => {
   res.send(text);
 });
 
-app.get("/wrgetter.js", (req, res) => {
-  let text = fs.readFileSync("../dist/wrgetter.js", 'utf-8');
+app.get("/getWR.js", (req, res) => {
+  let text = fs.readFileSync("../dist/getWR.js", 'utf-8');
   res.send(text);
 });
 

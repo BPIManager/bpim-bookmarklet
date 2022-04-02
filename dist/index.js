@@ -25,7 +25,7 @@ class Main {
             }
             console.log("v0.0.1");
             const dani = yield this.getter.getKaidenList();
-            this.getter.setDiff(11);
+            this.getter.setDiff(10); // 10:☆11、11:☆12
             const list = dani.list;
             let songsList = {};
             for (let i = 0; i < list.length; ++i) {
@@ -60,13 +60,12 @@ class Main {
         });
     }
     showResult() {
-        console.log(this.result);
         document.body.innerHTML = JSON.stringify(this.result);
     }
 }
 class Getter {
     constructor() {
-        this.diff = 11;
+        this.diff = 10;
         this.offset = 0;
         this.rivalId = "";
     }
@@ -89,7 +88,6 @@ class Getter {
     get() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                console.log(this.rivalId, this.diff, this.offset);
                 const res = yield fetch(`https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`, {
                     method: "GET",
                     credentials: "same-origin",
@@ -171,13 +169,11 @@ class Scraper {
     getTable() {
         const matcher = this.rawBody.match(/<div class="series-difficulty">.*?<div id="page-top">/);
         if (matcher) {
-            console.log(matcher, matcher.length, matcher[0]);
             this.setRawBody((!matcher || matcher.length === 0) ? "" : matcher[0]);
         }
         return this;
     }
     getEachSongs() {
-        console.log(this.rawBody);
         if (!this.rawBody) {
             console.log("NO RAWBODY");
             return {};
@@ -193,14 +189,12 @@ class Scraper {
             if (_matcher) {
                 const songName = _matcher[0].match(/(?<=\"music_win\">).*?(?=<\/a>)/);
                 let difficulty = eachSong.match(/<\/a><\/td>.*?<\/td>/);
-                console.log(songName, difficulty);
                 if (!difficulty) {
                     continue;
                 }
                 const suffix = difficulty[0].indexOf("ANOTHER") > -1 ? "[A]" : difficulty[0].indexOf("HYPER") > -1 ? "[H]" : "[L]";
                 if (songName) {
                     const score = _matcher[3].split(/<br>/);
-                    console.log(score, matcher);
                     if (score && score[0] !== "0") {
                         res[songName[0] + suffix] = Number(score[0]);
                     }
