@@ -6,7 +6,7 @@ const fs = require("fs").promises;
 
 const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));
 
-class Crawler {
+export class Crawler {
   private browser?: puppeteer.Browser;
   private mainPage?: puppeteer.Page;
   private scraper = new Scraper();
@@ -251,14 +251,3 @@ class Scraper {
     return res;
   }
 }
-
-const main = async () => {
-  const init = new Crawler();
-  await init.run("arena", 10);
-  await init.run("arena", 11);
-  await init.run("kaiden", 10);
-  await init.run("kaiden", 11);
-  console.log("COMPLETED");
-};
-
-main();
