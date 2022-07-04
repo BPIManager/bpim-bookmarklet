@@ -1,1 +1,4 @@
 /node_modules
+src/config/auth.ts
+.env
+savedata/
