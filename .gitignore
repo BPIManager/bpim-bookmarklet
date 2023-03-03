@@ -2,3 +2,4 @@
 src/config/auth.ts
 .env
 savedata/
+dist/

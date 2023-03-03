@@ -1,35 +1,46 @@
 import puppeteer from "puppeteer";
 import auth from "./config/auth";
 
-const iidx_ver = "29";
+const iidx_ver = "30";
 const fs = require("fs").promises;
 
-const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));
+const sleep = (msec: number) =>
+  new Promise((resolve) => setTimeout(resolve, msec));
 
 export class Crawler {
   private browser?: puppeteer.Browser;
   private mainPage?: puppeteer.Page;
   private scraper = new Scraper();
 
-  async run(mode: "arena" | "kaiden" = "arena", diff: 10 | 11 = 10): Promise<void> {
+  async run(
+    mode: "arena" | "kaiden" = "arena",
+    diff: 10 | 11 = 10
+  ): Promise<void> {
     this.browser = await puppeteer.launch({
       headless: false,
     });
     const _page = await this.browser.newPage();
     await this.signIn(_page);
 
-    const dani = mode === "arena" ? await this.getArenaList() : await this.getKaidenList();
+    const dani =
+      mode === "arena" ? await this.getArenaList() : await this.getKaidenList();
     this.setDiff(diff); // 10:☆11、11:☆12
     const list = dani.list;
     let songsList: { [key: string]: number } = {};
     const s = await this.browser.newPage();
-    for (let i = 0; i < list.length; ++i) {
+    for (let i = 4000; i < list.length; ++i) {
       const hour = new Date().getHours();
       const minute = new Date().getMinutes();
-      if ((hour > 4 && hour < 7) || (hour === 4 && minute > 55) || (hour === 7 && minute < 5)) {
+      if (
+        (hour > 4 && hour < 7) ||
+        (hour === 4 && minute > 55) ||
+        (hour === 7 && minute < 5)
+      ) {
         // 5時~7時の間はメンテナンス中なのでループを中断する
         // 大事を取って4時55分~7時5分まで待機する
-        console.log("IIDXサイトがメンテナンス中のため、メンテナンス終了まで待機しています");
+        console.log(
+          "IIDXサイトがメンテナンス中のため、メンテナンス終了まで待機しています"
+        );
         await sleep(1000 * 60); //1分待つ
         --i;
         continue;
@@ -51,9 +62,14 @@ export class Crawler {
             songsList[item] = b[item];
           }
         });
+        if (Object.keys(b).length === 0) {
+          break;
+        }
       }
       const res = JSON.stringify(songsList);
-      const fileName = `../savedata/${mode}/${diff === 10 ? "11" : "12"}/${list[i]["id"]}.json`;
+      const fileName = `../savedata/${mode}/${diff === 10 ? "11" : "12"}/${
+        list[i]["id"]
+      }.json`;
       await this.saveJson(fileName, res);
       songsList = {};
     }
@@ -65,7 +81,10 @@ export class Crawler {
 
   async getScorePage(s: puppeteer.Page): Promise<any> {
     try {
-      await s.goto(`https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`, { waitUntil: "domcontentloaded" });
+      await s.goto(
+        `https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`,
+        { waitUntil: "domcontentloaded" }
+      );
       return await s.content();
     } catch (e) {
       console.log(e);
@@ -73,11 +92,38 @@ export class Crawler {
     }
   }
 
-  private async signIn(_page: puppeteer.Page) {
-    await _page.goto("https://p.eagate.573.jp/gate/p/login.html?path=http%3A%2F%2Fp.eagate.573.jp%2Fgame%2F2dx%2F29%2Fdjdata%2Fstatus.html", { waitUntil: "domcontentloaded" });
-    await _page.type("#id_userId", auth.id as string);
-    await _page.type("#id_password", auth.password as string);
-    await Promise.all([_page.waitForNavigation({ waitUntil: "networkidle0" }), _page.click(".btn.submit a")]);
+  async waitEvent(page: puppeteer.Page) {
+    return new Promise(async (resolve) => {
+      //chromeに一時的な関数を作って送り込む（funcmanという名前にしました）
+      //何度も使い回す場合は、event名を重複しないようにする必要があります。
+      await page.exposeFunction("funcman", () => {
+        //result_inputへ値を返す
+        resolve("ログインできた");
+      });
+
+      //ボタンにクリックすると一時的な関数を実行するイベントを割り当てるコードを実行
+      await page.evaluate(() => {
+        document
+          .getElementById("login-form-login-button-id")!
+          .addEventListener("click", () => {
+            //ダミーのイベント
+            eval("window.funcman();");
+          });
+      });
+    });
+  }
+
+  async signIn(_page: puppeteer.Page) {
+    await _page.goto(
+      "https://p.eagate.573.jp/gate/p/login.html?path=http%3A%2F%2Fp.eagate.573.jp%2Fgame%2F2dx%2F30%2Fdjdata%2Fstatus.html",
+      {
+        waitUntil: "domcontentloaded",
+      }
+    );
+    await _page.type("#login-form-id", auth.id as string);
+    await _page.type("#login-form-password", auth.password as string);
+    await this.waitEvent(_page);
+    await Promise.all([_page.waitForNavigation({ waitUntil: "networkidle0" })]);
   }
 
   private diff: number = 10;
@@ -99,7 +145,10 @@ export class Crawler {
   async get(): Promise<any> {
     try {
       if (!this.mainPage) return [];
-      await this.mainPage.goto(`https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`, { waitUntil: "domcontentloaded" });
+      await this.mainPage.goto(
+        `https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`,
+        { waitUntil: "domcontentloaded" }
+      );
       return await this.mainPage.content();
     } catch (e) {
       console.log(e);
@@ -109,7 +158,9 @@ export class Crawler {
   async getKaidenList(): Promise<any> {
     if (!this.browser) return ["!"];
     const s = await this.browser.newPage();
-    await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", { waitUntil: "domcontentloaded" });
+    await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", {
+      waitUntil: "domcontentloaded",
+    });
 
     const res = await s.evaluate(
       async ({ iidx_ver }) => {
@@ -130,10 +181,13 @@ export class Crawler {
             limit: "10000",
             release_9_10_kaiden: "2",
           };
-          let res = await fetch(`https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/dani.html?grade_id=${obj["grade_id"]}&play_style=${obj["play_style"]}&page=${obj["page"]}&limit=${obj["limit"]}`, {
-            method: "POST",
-            credentials: "same-origin",
-          });
+          let res = await fetch(
+            `https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/dani.html?grade_id=${obj["grade_id"]}&play_style=${obj["play_style"]}&page=${obj["page"]}&limit=${obj["limit"]}`,
+            {
+              method: "POST",
+              credentials: "same-origin",
+            }
+          );
           if (!res.ok || res.status !== 200) {
             throw new Error(`statuscode:${res.status}`);
           }
@@ -154,7 +208,9 @@ export class Crawler {
     try {
       if (!this.browser) return ["!"];
       const s = await this.browser.newPage();
-      await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", { waitUntil: "domcontentloaded" });
+      await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", {
+        waitUntil: "domcontentloaded",
+      });
 
       const res = await s.evaluate(
         async ({ iidx_ver }) => {
@@ -173,10 +229,13 @@ export class Crawler {
             page: "0",
             limit: "5000",
           };
-          let res = await fetch(`https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/arena_class.html?grade_id=${obj["grade_id"]}&play_style=${obj["play_style"]}&page=${obj["page"]}&limit=${obj["limit"]}`, {
-            method: "POST",
-            credentials: "same-origin",
-          });
+          let res = await fetch(
+            `https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/arena_class.html?grade_id=${obj["grade_id"]}&play_style=${obj["play_style"]}&page=${obj["page"]}&limit=${obj["limit"]}`,
+            {
+              method: "POST",
+              credentials: "same-origin",
+            }
+          );
           if (!res.ok || res.status !== 200) {
             throw new Error(`statuscode:${res.status}`);
           }
@@ -213,7 +272,9 @@ class Scraper {
   }
 
   getTable() {
-    const matcher = this.rawBody.match(/<div class="series-difficulty">.*?<div id="page-top">/);
+    const matcher = this.rawBody.match(
+      /<div class="series-difficulty">.*?<div id="page-top">/
+    );
     if (matcher) {
       this.setRawBody(!matcher || matcher.length === 0 ? "" : matcher[0]);
     }
@@ -239,7 +300,12 @@ class Scraper {
         if (!difficulty) {
           continue;
         }
-        const suffix = difficulty[0].indexOf("ANOTHER") > -1 ? "[A]" : difficulty[0].indexOf("HYPER") > -1 ? "[H]" : "[L]";
+        const suffix =
+          difficulty[0].indexOf("ANOTHER") > -1
+            ? "[A]"
+            : difficulty[0].indexOf("HYPER") > -1
+            ? "[H]"
+            : "[L]";
         if (songName) {
           const score = _matcher[3].split(/<br>/);
           if (score && score[0] !== "0") {
@@ -251,3 +317,11 @@ class Scraper {
     return res;
   }
 }
+
+const main = async () => {
+  const init = new Crawler();
+  await init.run("kaiden", 11);
+  console.log("COMPLETED");
+};
+
+main();
