@@ -1,8 +1,10 @@
 import puppeteer from "puppeteer";
 import auth from "./config/auth";
 
-const iidx_ver = "30";
+const iidx_ver = "31";
 const fs = require("fs").promises;
+const ua =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36";
 
 const sleep = (msec: number) =>
   new Promise((resolve) => setTimeout(resolve, msec));
@@ -16,19 +18,24 @@ export class Crawler {
     mode: "arena" | "kaiden" = "arena",
     diff: 10 | 11 = 10
   ): Promise<void> {
-    this.browser = await puppeteer.launch({
-      headless: false,
+    this.browser = await puppeteer.connect({
+      browserURL: "http://127.0.0.1:9222",
+      defaultViewport: {
+        width: 1000,
+        height: 1000,
+      },
     });
-    const _page = await this.browser.newPage();
-    await this.signIn(_page);
 
+    const _page = await this.browser.newPage();
+    //_page.setUserAgent(ua);
+    //await this.signIn(_page);
     const dani =
       mode === "arena" ? await this.getArenaList() : await this.getKaidenList();
-    this.setDiff(diff); // 10:☆11、11:☆12
     const list = dani.list;
     let songsList: { [key: string]: number } = {};
     const s = await this.browser.newPage();
-    for (let i = 4000; i < list.length; ++i) {
+    s.setUserAgent(ua);
+    for (let i = 0; i < list.length; ++i) {
       const hour = new Date().getHours();
       const minute = new Date().getMinutes();
       if (
@@ -49,7 +56,7 @@ export class Crawler {
       console.log(i + " of " + list.length, list[i]["rival"]);
       for (let j = 0; j < 13; ++j) {
         this.setOffset(j);
-        const body = await this.getScorePage(s);
+        const body = await this.getScorePage(s, diff);
         const b = this.scraper.setRawBody(body).exec();
         if (j === 0 && Object.keys(b).length === 0) {
           console.log("NO LENGTH", j, b, list[i]["id"]);
@@ -79,10 +86,10 @@ export class Crawler {
     return await fs.writeFile(fileName, body);
   }
 
-  async getScorePage(s: puppeteer.Page): Promise<any> {
+  async getScorePage(s: puppeteer.Page, diff: number): Promise<any> {
     try {
       await s.goto(
-        `https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`,
+        `https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${diff}&style=0&disp=1&offset=${this.offset}`,
         { waitUntil: "domcontentloaded" }
       );
       return await s.content();
@@ -94,20 +101,15 @@ export class Crawler {
 
   async waitEvent(page: puppeteer.Page) {
     return new Promise(async (resolve) => {
-      //chromeに一時的な関数を作って送り込む（funcmanという名前にしました）
-      //何度も使い回す場合は、event名を重複しないようにする必要があります。
-      await page.exposeFunction("funcman", () => {
-        //result_inputへ値を返す
+      await page.exposeFunction("fc", () => {
         resolve("ログインできた");
       });
 
-      //ボタンにクリックすると一時的な関数を実行するイベントを割り当てるコードを実行
       await page.evaluate(() => {
         document
           .getElementById("login-form-login-button-id")!
           .addEventListener("click", () => {
-            //ダミーのイベント
-            eval("window.funcman();");
+            eval("window.fc();");
           });
       });
     });
@@ -115,24 +117,19 @@ export class Crawler {
 
   async signIn(_page: puppeteer.Page) {
     await _page.goto(
-      "https://p.eagate.573.jp/gate/p/login.html?path=http%3A%2F%2Fp.eagate.573.jp%2Fgame%2F2dx%2F30%2Fdjdata%2Fstatus.html",
+      "https://p.eagate.573.jp/gate/p/login.html?path=http%3A%2F%2Fp.eagate.573.jp%2Fgame%2F2dx%2F31%2Fdjdata%2Fstatus.html",
       {
         waitUntil: "domcontentloaded",
       }
     );
-    await _page.type("#login-form-id", auth.id as string);
-    await _page.type("#login-form-password", auth.password as string);
+    //await _page.type("#login-select-form-id", auth.id as string);
+    //await _page.type("#login-form-password", auth.password as string);
     await this.waitEvent(_page);
     await Promise.all([_page.waitForNavigation({ waitUntil: "networkidle0" })]);
   }
 
-  private diff: number = 10;
   private offset: number = 0;
   private rivalId: string = "";
-
-  setDiff(val: number) {
-    this.diff = val;
-  }
 
   setOffset(val: number) {
     this.offset = val * 50;
@@ -142,23 +139,11 @@ export class Crawler {
     this.rivalId = val;
   }
 
-  async get(): Promise<any> {
-    try {
-      if (!this.mainPage) return [];
-      await this.mainPage.goto(
-        `https://p.eagate.573.jp/game/2dx/${iidx_ver}/djdata/music/difficulty_rival.html?rival=${this.rivalId}&difficult=${this.diff}&style=0&disp=1&offset=${this.offset}`,
-        { waitUntil: "domcontentloaded" }
-      );
-      return await this.mainPage.content();
-    } catch (e) {
-      console.log(e);
-    }
-  }
-
   async getKaidenList(): Promise<any> {
     if (!this.browser) return ["!"];
     const s = await this.browser.newPage();
-    await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", {
+    s.setUserAgent(ua);
+    await s.goto("https://p.eagate.573.jp/game/2dx/31/djdata/status.html", {
       waitUntil: "domcontentloaded",
     });
 
@@ -207,10 +192,15 @@ export class Crawler {
   async getArenaList(): Promise<any> {
     try {
       if (!this.browser) return ["!"];
+      console.log("ARENA");
       const s = await this.browser.newPage();
-      await s.goto("https://p.eagate.573.jp/game/2dx/29/djdata/status.html", {
-        waitUntil: "domcontentloaded",
-      });
+      s.setUserAgent(ua);
+      await s.goto(
+        "https://p.eagate.573.jp/game/2dx/31/ranking/arena/top_ranking.html",
+        {
+          waitUntil: "domcontentloaded",
+        }
+      );
 
       const res = await s.evaluate(
         async ({ iidx_ver }) => {
@@ -220,32 +210,56 @@ export class Crawler {
               reader.onload = () => {
                 resolve(reader.result as string);
               };
-              reader.readAsText(blob, "shift-jis");
+              reader.readAsText(blob, "utf-8");
             });
           }
-          const obj: { [key: string]: string } = {
-            grade_id: "0",
-            play_style: "0",
-            page: "0",
-            limit: "5000",
-          };
-          let res = await fetch(
-            `https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/arena_class.html?grade_id=${obj["grade_id"]}&play_style=${obj["play_style"]}&page=${obj["page"]}&limit=${obj["limit"]}`,
-            {
-              method: "POST",
-              credentials: "same-origin",
+          const fetchData = async (page: number) => {
+            const obj: { [key: string]: string } = {
+              grade_id: "0",
+              play_style: "0",
+              page: String(page),
+              limit: "1000",
+            };
+
+            let body = Object.keys(obj)
+              .map((key) => {
+                return (
+                  encodeURIComponent(key) + "=" + encodeURIComponent(obj[key])
+                );
+              })
+              .join("&");
+            console.log("test", body);
+            let res = await fetch(
+              `https://p.eagate.573.jp/game/2dx/${iidx_ver}/ranking/json/arena_class.html`,
+              //?
+              {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                  "content-type":
+                    "application/x-www-form-urlencoded; charset=UTF-8",
+                },
+                body: body,
+              }
+            );
+            if (!res.ok || res.status !== 200) {
+              throw new Error(`statuscode:${res.status}`);
             }
-          );
-          if (!res.ok || res.status !== 200) {
-            throw new Error(`statuscode:${res.status}`);
+            const json = JSON.parse(await parseBlob(await res.blob()));
+            console.log(res.status, json);
+            return json;
+          };
+          let res: any[] = [];
+          for (let i = 0; i < 5; ++i) {
+            const f = await fetchData(i);
+            res = res.concat(f.list);
           }
-          const json = JSON.parse(await parseBlob(await res.blob()));
-          console.log(res.status, json);
-          return json;
+          return { list: res };
         },
         { iidx_ver }
       );
       s.close();
+      console.log(res);
       return res;
     } catch (e) {
       console.log(e);
@@ -317,11 +331,3 @@ class Scraper {
     return res;
   }
 }
-
-const main = async () => {
-  const init = new Crawler();
-  await init.run("kaiden", 11);
-  console.log("COMPLETED");
-};
-
-main();

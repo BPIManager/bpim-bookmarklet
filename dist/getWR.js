@@ -22,7 +22,7 @@ const main = class main {
     }
     async getOrigDef() {
         var _a;
-        const r = await fetch(`https://proxy.poyashi.me/?type=bpi`);
+        const r = await fetch(`https://proxy.poyashi.me/bpim/x/release.json`);
         if (!r.ok)
             return;
         return (_a = (await r.json()).body) === null || _a === void 0 ? void 0 : _a.map((item) => {

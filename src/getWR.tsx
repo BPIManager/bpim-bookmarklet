@@ -11,7 +11,7 @@ const main = class main {
 
   async getWR() {
     //0(1st & substream) =< series_id =< 28(CastHour)
-    for (let currentVer = 0; currentVer <= 28; ++currentVer) {
+    for (let currentVer = 0; currentVer <= 30; ++currentVer) {
       this.iidxVer = currentVer;
       await this.getWRs();
     }
@@ -21,7 +21,7 @@ const main = class main {
   }
 
   async getOrigDef() {
-    const r = await fetch(`https://proxy.poyashi.me/?type=bpi`);
+    const r = await fetch(`https://proxy.poyashi.me/bpim/x/release.json`);
     if (!r.ok) return;
     return (await r.json()).body?.map((item: any) => {
       if (Number(item.difficultyLevel) === 12 && item.dpLevel === "0") {
