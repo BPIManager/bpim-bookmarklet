@@ -21,7 +21,7 @@ const main = class {
     this.def = {};
     const t = await (
       await fetch(
-        "https://raw.githubusercontent.com/BPIManager/BPIM-Scores/598115f6ee50105c1ffa9e9746326f0c8a012851/output/release.json"
+        "https://raw.githubusercontent.com/BPIManager/BPIM-Scores/0f3fe5aca15da1a8aab59b283a08b099e3462a36/output/release.json"
       )
     ).json();
     //this.newDef = t.body;
@@ -67,7 +67,7 @@ const main = class {
       });
       if (!this.newDef) this.newDef = [];
       let newItem = this.temp[title];
-      if (newItem) {
+      if (_new - this.def[sm[0]] > 0) {
         newItem.wr = Number(_new);
       } else {
         //console.log(title)

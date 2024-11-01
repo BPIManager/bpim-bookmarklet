@@ -96,7 +96,7 @@ const main = class {
       });
       if (!this.newDef) this.newDef = [];
       let newItem = this.temp[title];
-      if (newItem) {
+      if (_new - this.def[sm[1]] > 0) {
         newItem.wr = Number(_new);
       } else {
         //console.log(title)
